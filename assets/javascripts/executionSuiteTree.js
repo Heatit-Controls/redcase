@@ -1,6 +1,7 @@
 var RedcaseExecutionSuiteTree = function($) {
 
-	var tree;
+	var self = this;
+	this.tree = null;
 
 	var caseItems;
 
@@ -32,7 +33,7 @@ var RedcaseExecutionSuiteTree = function($) {
 				$('#list_id option:selected').text($('#list_name').val());
 			},
 			function() {
-				tree.refresh();
+				self.tree.refresh();
 				Redcase.full();
 			}
 		);
@@ -52,7 +53,7 @@ var RedcaseExecutionSuiteTree = function($) {
 				$('#list_id').val(data.suite_id);
 			},
 			function() {
-				tree.refresh();
+				self.tree.refresh();
 				Redcase.full();
 			}
 		);
@@ -68,7 +69,7 @@ var RedcaseExecutionSuiteTree = function($) {
 				$('#list_name').val(
 					$("#list_id option:selected").text()
 				);
-				tree.refresh();
+				self.tree.refresh();
 				Redcase.full();
 			}
 		);
@@ -133,7 +134,7 @@ var RedcaseExecutionSuiteTree = function($) {
 		$('#list_name').val(
 			$('#list_id').children(':selected').text()
 		);
-		tree.refresh();
+		self.tree.refresh();
 	};
 
 	var addSuite = function(
@@ -162,7 +163,7 @@ var RedcaseExecutionSuiteTree = function($) {
 	};
 
 	var addSuiteDialog = function(params) {
-		var node = tree.get_node(params.reference);
+		var node = self.tree.get_node(params.reference);
 		$('#redcase-dialog').dialog({
 			title: 'Creating execution suite',
 			modal: true,
@@ -174,7 +175,7 @@ var RedcaseExecutionSuiteTree = function($) {
 						node.original.suite_id,
 						name,
 						function(newNode) {
-							tree.create_node(
+							self.tree.create_node(
 								node,
 								newNode
 							);
@@ -214,7 +215,7 @@ var RedcaseExecutionSuiteTree = function($) {
 				node.original.suite_id,
 				node.text,
 				function() {
-					tree.delete_node(node);
+					self.tree.delete_node(node);
 					Redcase.full();
 				}
 			);
@@ -229,13 +230,13 @@ var RedcaseExecutionSuiteTree = function($) {
 			{},
 			Redcase.api.testCase.update(node.original.issue_id), {
 				params: {
-					remove_from_exec_id: tree
+					remove_from_exec_id: self.tree
 						.get_node(node.parent)
 						.original
 						.suite_id
 				},
 				success: function() {
-					tree.delete_node(node);
+					self.tree.delete_node(node);
 					Redcase.full();
 				},
 				errorMessage: (
@@ -249,7 +250,7 @@ var RedcaseExecutionSuiteTree = function($) {
 	};
 
 	var deleteItem = function(params) {
-		var selected = tree.get_selected(true);
+		var selected = self.tree.get_selected(true);
 		for (var i = 0; i < selected.length; i++) {
 			if (selected[i].type === 'case') {
 				deleteCase(selected[i]);
@@ -284,7 +285,7 @@ var RedcaseExecutionSuiteTree = function($) {
 	};
 
 	var renameSuiteDialog = function(params) {
-		var node = tree.get_node(params.reference);
+		var node = self.tree.get_node(params.reference);
 		$('#redcase-dialog').dialog({
 			title: 'Renaming execution suite',
 			modal: true,
@@ -296,7 +297,7 @@ var RedcaseExecutionSuiteTree = function($) {
 						node.original.suite_id,
 						name,
 						function() {
-							tree.set_text(node, name);
+							self.tree.set_text(node, name);
 							Redcase.full();
 						},
 						function() {
@@ -310,7 +311,7 @@ var RedcaseExecutionSuiteTree = function($) {
 
 	var getItems = function() {
 		var items = {};
-		var selectionType = Redcase.testSuiteTree.getSelectionType(tree);
+		var selectionType = Redcase.testSuiteTree.getSelectionType(self.tree);
 		if (selectionType < 3) {
 			items = $.extend(items, commonItems);
 		}
@@ -380,7 +381,7 @@ var RedcaseExecutionSuiteTree = function($) {
 			), {
 				params: {
 					parent_id: newInstance
-						.get_node(new_node.parent)
+						.get_node(newNode.parent)
 						.original
 						.suite_id
 				},
@@ -407,7 +408,7 @@ var RedcaseExecutionSuiteTree = function($) {
 		newInstance,
 		oldInstance
 	) {
-		if (orgNode.original.status.name === 'In Progress') {
+		if (orgNode.original.status.name.toLowerCase() === 'in progress') {
 			newNode.original = orgNode.original;
 			newInstance.set_id(newNode, orgNode.id);
 			var apiParms = $.extend(
@@ -446,45 +447,110 @@ var RedcaseExecutionSuiteTree = function($) {
 	};
 
 	var onCopy = function(event, params) {
-		if (params.original.node.original.type === 'case') {
-			// Bug: params.original.node.original does not have 'issue_id' property
-			// so we have to extract issue_id directly from node id:
-			// 'issue_1' => '1'
-			var issueId = params.node.id.split('_')[1];
+		// Make sure we have a valid node and parameters
+		try {
+			console.log('onCopy called with params:', params);
 			
-			// Also handle case_id format
-			if (!issueId) {
-				issueId = params.node.original.issue_id;
-			}
-			
-			if (!issueId) {
-				console.error('Could not extract issue ID from', params.node);
+			// Ensure we have the tree instance
+			var currentTree = self.tree || tree;
+			if (!currentTree) {
+				console.error('No tree instance available in onCopy function');
 				return;
 			}
 			
+			// Check if we have valid node and parent information
+			if (!params.node || !params.parent) {
+				console.error('Missing node or parent in copy_node event:', params);
+				return;
+			}
+			
+			// Get the issue ID from the node
+			var issueId;
+			
+			// First try to get it from the original node's data
+			if (params.original && params.original.node && params.original.node.original && params.original.node.original.issue_id) {
+				issueId = params.original.node.original.issue_id;
+			} 
+			// If not found, try to extract from the node ID
+			else if (params.node.id && params.node.id.indexOf('issue_') === 0) {
+				issueId = params.node.id.split('_')[1];
+			}
+			// If still not found, try the node's original data
+			else if (params.node.original && params.node.original.issue_id) {
+				issueId = params.node.original.issue_id;
+			}
+			
+			// If we couldn't find an issue ID, log an error and stop
+			if (!issueId) {
+				console.error('Could not extract issue ID from node:', params.node);
+				return;
+			}
+			
+			// Get the parent ID (destination execution suite ID)
+			var parentId;
+			
+			// First try to extract from the parent ID string
+			if (typeof params.parent === 'string' && params.parent.indexOf('suite_') === 0) {
+				parentId = params.parent.split('_')[1];
+			} 
+			// If not found, try to get the parent node and extract suite_id
+			else {
+				var parentNode = currentTree.get_node(params.parent);
+				if (parentNode && parentNode.original && parentNode.original.suite_id) {
+					parentId = parentNode.original.suite_id;
+				}
+			}
+			
+			// If we couldn't find a parent ID, log an error and stop
+			if (!parentId) {
+				console.error('Could not extract parent ID from:', params.parent);
+				currentTree.delete_node(params.node);
+				return;
+			}
+			
+			console.log('Adding test case ' + issueId + ' to execution suite ' + parentId);
+			
+			// Now make the API call to add the test case to the execution suite
 			var apiParms = $.extend({}, 
 				Redcase.api.testCase.update(issueId), {
 					params: {
-						add_to_exec_id: params.parent.split('_')[1]
+						add_to_exec_id: parentId
 					},
 					success: function() {
 						// Set the node's original data to include the issue_id
-						params.node.original = params.original.node.original;
+						if (params.original && params.original.node && params.original.node.original) {
+							params.node.original = params.original.node.original;
+						}
 						Redcase.full();
 					},
 					error: function() {
-						tree.delete_node(params.node);
+						currentTree.delete_node(params.node);
 					},
 					errorMessage: "Test case can't be added to execution list"
 				}
 			);
 			Redcase.api.apiCall(apiParms);
+		} catch (error) {
+			console.error('Error in onCopy function:', error);
+			// Try to clean up the node if possible
+			if (params.node && currentTree) {
+				try {
+					currentTree.delete_node(params.node);
+				} catch (e) {
+					console.error('Error cleaning up node:', e);
+				}
+			}
 		}
+	};
+
+	var nodeSelected = function(e, data) {
+		// Empty function to prevent errors
+		console.log('Node selected:', data.node);
 	};
 
 	var build = function() {
 		prepareContextItems();
-		tree = $('#management_execution_suite_tree_id').jstree({
+		var jstree = $('#management_execution_suite_tree_id').jstree({
 			core: {
 				animation: 0,
 				check_callback: checkCallback,
@@ -542,9 +608,22 @@ var RedcaseExecutionSuiteTree = function($) {
 				check_while_dragging: true
 			}
 		});
-		tree.on('copy_node.jstree', onCopy);
-		tree.on('select_node.jstree', nodeSelected);
-		tree = $.jstree.reference(tree);
+		
+		console.log('jstree initialization complete');
+		
+		// Get the jstree instance and store it
+		var treeInstance = $('#management_execution_suite_tree_id').jstree(true);
+		console.log('Tree instance obtained:', treeInstance);
+		
+		// Attach events using jQuery, not the tree instance
+		$('#management_execution_suite_tree_id').on('copy_node.jstree', onCopy);
+		$('#management_execution_suite_tree_id').on('select_node.jstree', nodeSelected);
+		
+		// Store the tree instance in both places for compatibility
+		self.tree = treeInstance;
+		tree = treeInstance;
+		
+		console.log('Tree instance assigned to:', self.tree);
 	};
 
 	this.initialize = function() {

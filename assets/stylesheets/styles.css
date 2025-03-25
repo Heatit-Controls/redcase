@@ -1,5 +1,4 @@
-﻿
-#report_results_table_id {
+﻿#report_results_table_id {
 	text-align: center;
 	background-image: url('../images/y.jpg');
 	background-repeat: repeat-x;
@@ -411,6 +410,18 @@ a:hover img {
 
 .testcase-result-icon-NotAvailable {
         background-image: url(../images/NotAvailable.png) !important;
+}
+
+/* Additional CSS to ensure icons are displayed correctly in jstree */
+.jstree-default .jstree-themeicon.testcase-result-icon-Passed,
+.jstree-default .jstree-themeicon.testcase-result-icon-Failed,
+.jstree-default .jstree-themeicon.testcase-result-icon-none,
+.jstree-default .jstree-themeicon.testcase-result-icon-Blocked,
+.jstree-default .jstree-themeicon.testcase-result-icon-NotAvailable {
+    background-size: 16px 16px;
+    background-position: center;
+    width: 16px;
+    height: 16px;
 }
 
 .jschart-legend-table {

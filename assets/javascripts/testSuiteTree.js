@@ -1,6 +1,6 @@
 var RedcaseTestSuiteTree = function($) {
 
-	self = this;
+	var self = this;
 
 	this.tree = null;
 
@@ -10,11 +10,26 @@ var RedcaseTestSuiteTree = function($) {
 
 	var suiteItems;
 
-	var suiteItems;
+	var commonItems;
 
 	this.initialize = function() {
 		prepareContextItems();
 		build();
+		
+		// Add a formatter to make sure icons are updated after initialization
+		setTimeout(function() {
+			$('#management_test_suite_tree_id .jstree-node').each(function() {
+				var nodeId = $(this).attr('id');
+				if (nodeId) {
+					var node = self.tree.get_node(nodeId);
+					if (node && node.original && node.original.type === 'case' && node.original.iconCls) {
+						self.tree.set_icon(node, node.original.iconCls);
+						// Force a redraw of the node
+						$(this).find('> a > i').removeClass().addClass(node.original.iconCls);
+					}
+				}
+			});
+		}, 500);
 	};
 
 	this.getSelectionType = function(tree) {
@@ -274,25 +289,100 @@ var RedcaseTestSuiteTree = function($) {
 	};
 
 	var deleteItem = function(params) {
-		var selected = self.tree.get_selected(true);
-		for (var i = 0; i < selected.length; i++) {
-			if (selected[i].type === 'case') {
-				deleteCase(selected[i]);
-			} else {
-				deleteSuite(selected[i]);
-			}
+		var node = self.tree.get_node(params.reference);
+		if (node.type === 'case') {
+			deleteCase(node);
+		} else {
+			deleteSuite(node);
 		}
 	};
 
 	var addSuite = function(params) {
-		var node = self.tree.get_node(params.reference);
-		$('#redcase-dialog').dialog({
-			title: 'New test suite name',
-			modal: true,
-			resizable: false,
-			buttons: {
-				OK: function() {
-					var name = $('#redcase-dialog-value').val();
+		try {
+			var node = self.tree.get_node(params.reference);
+			if (!node) {
+				console.error('Node not found for reference:', params.reference);
+				return;
+			}
+			
+			console.log('Adding suite to node:', node);
+			
+			// Ensure the dialog element exists and is properly initialized
+			var $dialog = $('#redcase-dialog');
+			if ($dialog.length === 0) {
+				console.error('Dialog element not found');
+				$('body').append('<div id="redcase-dialog"><input type="text" id="redcase-dialog-value" style="width: 95%;" /></div>');
+				$dialog = $('#redcase-dialog');
+			}
+			
+			// Reset the dialog input field
+			$('#redcase-dialog-value').val('');
+			
+			// Use direct jQuery UI dialog method
+			try {
+				$dialog.dialog({
+					title: 'New test suite name',
+					modal: true,
+					resizable: false,
+					width: 300,
+					open: function() {
+						console.log('Dialog opened');
+						// Focus the input field
+						$('#redcase-dialog-value').focus();
+					},
+					buttons: [
+						{
+							text: "OK",
+							click: function() {
+								var name = $('#redcase-dialog-value').val();
+								if (name.trim() === '') {
+									alert('Test suite name cannot be empty');
+									return;
+								}
+								
+								console.log('Creating new suite with name:', name);
+								
+								var apiParms = $.extend(
+									{},
+									Redcase.api.testSuite.create(), {
+										params: {
+											name: name,
+											parent_id: node.original.suite_id
+										},
+										success: function(newNode) {
+											console.log('New node created:', newNode);
+											self.tree.create_node(node, newNode);
+											self.tree.open_node(node);
+										},
+										errorMessage: (
+											"Test suite '"
+											+ name
+											+ "' can't be created"
+										),
+										complete: function() {
+											$dialog.dialog('close');
+										}
+									}
+								);
+								Redcase.api.apiCall(apiParms);
+							}
+						},
+						{
+							text: "Cancel",
+							click: function() {
+								$(this).dialog('close');
+							}
+						}
+					]
+				});
+				
+				console.log('Dialog initialization successful');
+			} catch (dialogError) {
+				console.error('Error initializing dialog:', dialogError);
+				
+				// Fallback to simple prompt if dialog fails
+				var name = prompt('Enter new test suite name:');
+				if (name && name.trim() !== '') {
 					var apiParms = $.extend(
 						{},
 						Redcase.api.testSuite.create(), {
@@ -302,159 +392,197 @@ var RedcaseTestSuiteTree = function($) {
 							},
 							success: function(newNode) {
 								self.tree.create_node(node, newNode);
+								self.tree.open_node(node);
 							},
 							errorMessage: (
 								"Test suite '"
 								+ name
 								+ "' can't be created"
-							),
-							complete: function() {
-								$('#redcase-dialog').dialog('close');
-							}
+							)
 						}
 					);
 					Redcase.api.apiCall(apiParms);
 				}
 			}
-		});
+		} catch (error) {
+			console.error('Error in addSuite function:', error);
+		}
 	};
 
 	var renameSuite = function(params) {
 		var node = self.tree.get_node(params.reference);
-		$('#redcase-dialog').dialog({
-			title: 'Rename test suite',
-			modal: true,
-			resizable: false,
-			buttons: {
-				OK: function() {
-					var name = $('#redcase-dialog-value').val();
-					var apiParms = $.extend(
-						{},
-						Redcase.api.testSuite.update(
-							node.original.suite_id
-						), {
-							params: {
-								new_name: name
-							},
-							success: function() {
-								self.tree.set_text(node, name);
-							},
-							errorMessage: (
-								"Can't rename '" + node.text + "'"
-							),
-							complete: function() {
-								$('#redcase-dialog').dialog('close');
-							}
-						}
-					);
-					Redcase.api.apiCall(apiParms);
-				}
-			},
-			open: function () {
-				var dialog = $(this);
-				dialog.keydown(function (event) {
-					if (event.keyCode === 13) {
-						event.preventDefault();
-						$('#redcase-dialog')
-							.parents()
-							.find('.ui-dialog-buttonpane button')
-							.first()
-							.trigger('click');
-					}
-				});
-			}
-		});
+		if ((node.parents.length > 1)
+			&& (node.text !== '.Unsorted')
+			&& (node.text !== '.Obsolete')
+		) {
+			self.tree.edit(node);
+		}
 	};
 
 	var viewCase = function(params) {
-		var node = self.tree.get_node(params.reference);
-		window.open('../../issues/' + node.original.issue_id, 'test');
-	};
-
-	var getItems = function(node) {
-		var items = {};
-		var selectionType = self.getSelectionType(self.tree);
-		if (selectionType < 3) {
-			items = $.extend(items, commonItems);
+		try {
+			console.log('View case called with params:', params);
+			var node = self.tree.get_node(params.reference);
+			
+			if (!node) {
+				console.error('Node not found for reference:', params.reference);
+				return;
+			}
+			
+			console.log('Viewing test case node:', node);
+			
+			if (!node.original || !node.original.issue_id) {
+				console.error('No issue ID found for node:', node);
+				return;
+			}
+			
+			var issueId = node.original.issue_id;
+			var url = '../../issues/' + issueId;
+			console.log('Opening URL:', url);
+			
+			// Open in a new window/tab
+			window.open(url, '_blank');
+		} catch (error) {
+			console.error('Error in viewCase function:', error);
+			
+			// Try to extract issue ID from node ID as fallback
+			if (params.reference) {
+				var matches = params.reference.match(/issue_(\d+)/);
+				if (matches && matches[1]) {
+					var issueId = matches[1];
+					console.log('Fallback: Opening issue ID from node ID:', issueId);
+					window.open('../../issues/' + issueId, '_blank');
+				}
+			}
 		}
-		// Testcase
-		if (selectionType === 0) {
-			$.extend(items, caseItems);
-		}
-		// Testsuite
-		if (selectionType === 1) {
-			$.extend(items, suiteItems);
-		}
-		// Testsuite or Special
-		if ((selectionType === 1) || (selectionType === 3)) {
-			$.extend(items, specialSuiteItems);
-		}
-		return items;
 	};
 
 	var build = function() {
-		tree = $('#management_test_suite_tree_id').jstree({
-			core: {
-				check_callback: checkCallback,
-				data: {
-					type: 'GET',
-					url: Redcase.api.context + Redcase.api.testSuite.index().method
-				},
-				multiple: false
-			},
-			plugins: ['dnd', 'types', 'contextmenu'],
-			types: {
-				'#': {
-					valid_children: ['root']
-				},
-				root: {
-					valid_children: ['suite', 'case']
-				},
-				suite: {
-					valid_children: ['suite', 'case']
-				},
-				'default': {
-					valid_children: []
-				},
-				'case': {
-					valid_children: []
-				}
-			},
-			contextmenu: {
-				items: function(node) {
-					var items = {};
-					if (node.type === 'case') {
-						$.extend(items, caseItems);
-						if ((node.parents.length > 1)
-							&& (node.parents[1] !== 'Default')
-							&& (node.text !== '.Obsolete')
-						) {
-							$.extend(items, commonItems);
+		console.log('Building test suite tree...');
+		try {
+			// Create jstree and store the reference
+			$('#management_test_suite_tree_id').jstree({
+				core: {
+					check_callback: checkCallback,
+					data: {
+						type: 'GET',
+						url: Redcase.api.context + Redcase.api.testSuite.index().method,
+						dataFilter: function(data) {
+							// Process the data before jstree processes it
+							var json = JSON.parse(data);
+							console.log('Data received from server:', json);
+							return JSON.stringify(json);
 						}
-					} else if (node.type === 'suite') {
-						if ((node.parents.length > 1)
-							&& (node.text !== '.Obsolete')
-							&& (node.text !== '.Unsorted')
-						) {
-							$.extend(items, suiteItems);
-							$.extend(items, commonItems);
-						}
-						$.extend(items, specialSuiteItems);
+					},
+					themes: {
+						icons: true
 					}
-					return items;
+				},
+				plugins: ['dnd', 'types', 'contextmenu'],
+				types: {
+					'#': {
+						valid_children: ['root']
+					},
+					root: {
+						valid_children: ['suite', 'case']
+					},
+					suite: {
+						valid_children: ['suite', 'case']
+					},
+					'default': {
+						valid_children: []
+					},
+					'case': {
+						valid_children: []
+					}
+				},
+				contextmenu: {
+					items: function(node) {
+						var items = {};
+						if (node.type === 'case') {
+							$.extend(items, caseItems);
+							if ((node.parents.length > 1)
+								&& (node.parents[1] !== 'Default')
+								&& (node.text !== '.Obsolete')
+							) {
+								$.extend(items, commonItems);
+							}
+						} else if (node.type === 'suite') {
+							if ((node.parents.length > 1)
+								&& (node.text !== '.Obsolete')
+								&& (node.text !== '.Unsorted')
+							) {
+								$.extend(items, suiteItems);
+								$.extend(items, commonItems);
+							}
+							$.extend(items, specialSuiteItems);
+						}
+						return items;
+					}
+				},
+				dnd: {
+					always_copy: true,
+					drag_selection: true,
+					is_draggable: isDraggable,
+					check_while_dragging: true
 				}
-			},
-			dnd: {
-				always_copy: true,
-				drag_selection: true,
-				is_draggable: isDraggable,
-				check_while_dragging: true
-			}
-		});
-		tree.on('copy_node.jstree', onCopy);
-		tree = $.jstree.reference(tree);
-	};
+			});
 
+			// Properly get the tree reference - must use jQuery(ID).jstree(true) format
+			self.tree = jQuery2('#management_test_suite_tree_id').jstree(true);
+			
+			// Bind events using jQuery directly to avoid "tree.on is not a function" error
+			var treeElement = $('#management_test_suite_tree_id');
+			
+			// Bind copy node event
+			treeElement.on('copy_node.jstree', onCopy);
+			
+			// Bind loaded event to handle icons
+			treeElement.on('loaded.jstree', function(e, data) {
+				setTimeout(function() {
+					// After tree is loaded, set icons for test cases based on iconCls
+					treeElement.find('.jstree-leaf').each(function() {
+						var nodeId = $(this).attr('id');
+						if (nodeId) {
+							var node = self.tree.get_node(nodeId);
+							if (node && node.original && node.original.iconCls) {
+								self.tree.set_icon(node, node.original.iconCls);
+							}
+						}
+					});
+				}, 100);
+			});
+			
+			// Bind refresh event
+			treeElement.on('refresh.jstree', function() {
+				setTimeout(function() {
+					treeElement.find('.jstree-leaf').each(function() {
+						var nodeId = $(this).attr('id');
+						if (nodeId) {
+							var node = self.tree.get_node(nodeId);
+							if (node && node.original && node.original.iconCls) {
+								self.tree.set_icon(node, node.original.iconCls);
+							}
+						}
+					});
+				}, 100);
+			});
+			
+			// Bind open node event
+			treeElement.on('after_open.jstree', function(e, data) {
+				if (data.node && data.node.children) {
+					$(data.node.children).each(function(i, nodeId) {
+						var childNode = self.tree.get_node(nodeId);
+						if (childNode && childNode.type === 'case' && childNode.original && childNode.original.iconCls) {
+							self.tree.set_icon(childNode, childNode.original.iconCls);
+						}
+					});
+				}
+			});
+		} catch (error) {
+			console.error('Error during tree initialization:', error);
+		}
+	};
 };
 
 jQuery2(function($) {
@@ -466,4 +594,3 @@ jQuery2(function($) {
 	}
 	Redcase.testSuiteTree = new RedcaseTestSuiteTree($);
 });
-

@@ -28,6 +28,11 @@
 				console.error('Execution suite tree not initialized properly');
 			}
 		}, 500);
+
+		// Comment out or remove these lines
+		if (Redcase.executionTree && typeof Redcase.executionTree.initialize === 'function') {
+			Redcase.executionTree.initialize();
+		}
 	});
 </script>
 

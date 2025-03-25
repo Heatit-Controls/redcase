@@ -152,7 +152,7 @@ class TestCase < ActiveRecord::Base
 			},
 			'type'      => 'case',
 			'state'     => {
-				'disabled' => (issue.status.name != 'In Progress')
+				'disabled' => (issue.status.name.downcase != 'in progress')
 			}
 		}
 	end

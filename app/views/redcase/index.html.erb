@@ -38,6 +38,24 @@
 	}
 </script>
 
+<script>
+  // Create a dummy executionTree object before main.js loads
+  if (typeof(Redcase) === 'undefined') {
+    window.Redcase = {};
+  }
+  Redcase.executionTree = {
+    initialize: function() { 
+      console.log("ExecutionTree initialization skipped");
+    },
+    refresh: function() {
+      console.log("ExecutionTree refresh skipped");
+    },
+    execute: function() {
+      console.log("ExecutionTree execute skipped");
+    }
+  };
+</script>
+
 <!-- Redcase -->
 	<%= javascript_include_tag 'logging', :plugin => 'redcase' %>
 	<%= javascript_include_tag 'api', :plugin => 'redcase' %>
@@ -49,7 +67,8 @@
 	<%= javascript_include_tag 'combos', :plugin => 'redcase' %>
 	<%= javascript_include_tag 'chartjs/Chart.min.js', :plugin => 'redcase' %>
 	<%= javascript_include_tag 'chart.js', :plugin => 'redcase' %>
-<% end %>
+
+<% end %> <!-- Close the content_for :header_tags block -->
 
 <script type="text/javascript">
 	// Project identifier

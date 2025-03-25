@@ -60,6 +60,25 @@ jQuery2(function($) {
 	// Initialize when the document is ready
 	$(document).ready(function() {
 		Redcase.initialize();
+		
+		// Fix for test case icons not showing properly
+		setTimeout(function() {
+			// Force icon redraw for test cases in management view
+			$('#management_test_suite_tree_id .jstree-leaf').each(function() {
+				var $node = $(this);
+				var nodeId = $node.attr('id');
+				var treeRef = $.jstree.reference('#management_test_suite_tree_id');
+				if (treeRef && nodeId) {
+					var node = treeRef.get_node(nodeId);
+					if (node && node.original && node.original.iconCls) {
+						// Direct DOM manipulation to set the icon
+						$node.find('> a > i.jstree-icon')
+							.removeClass()
+							.addClass('jstree-icon jstree-themeicon ' + node.original.iconCls);
+					}
+				}
+			});
+		}, 1000); // Wait for everything to load
 	});
 });
 
