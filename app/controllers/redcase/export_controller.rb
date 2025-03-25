@@ -1,8 +1,7 @@
-
 class Redcase::ExportController < ApplicationController
 
-	unloadable
-	before_filter :find_project, :authorize
+	skip_before_action :verify_authenticity_token, only: [:index]
+	before_action :find_project, :authorize
 
 	def index
 		project_name = @project.name.gsub(' ', '_');
@@ -24,7 +23,7 @@ class Redcase::ExportController < ApplicationController
 	private
 
 	def export_to_excel
-		excelDoc = Excel_Exporter.exportTestResults(
+		excelDoc = ExcelExporter.exportTestResults(
 			@project.id,
 			params[:suite_id],
 			params[:version_id],
@@ -37,7 +36,7 @@ class Redcase::ExportController < ApplicationController
 	end
 
 	def export_to_rtf
-		rtfDoc = Rtf_Exporter.exportTestSuiteSpec(
+		rtfDoc = RtfExporter.exportTestSuiteSpec(
 			params[:suite_id].to_i,
 			@project
 		)

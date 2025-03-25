@@ -1,7 +1,7 @@
 
 class TestGraph
 
-	unloadable
+	 
 
 	def self.get_data(version_id, environment_id, suite_id, project_id)
 		all = ExecutionResult.all.inject({}) { |names, result|

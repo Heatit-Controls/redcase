@@ -1,10 +1,11 @@
-
 require 'redmine'
-require 'issue_patch'
-require 'project_patch'
-require 'version_patch'
-require 'user_patch'
-require 'redcase_override'
+require_relative 'lib/issue_patch'
+require_relative 'lib/project_patch'
+require_relative 'lib/version_patch'
+require_relative 'lib/user_patch'
+require_relative 'lib/redcase_override'
+require_relative 'lib/issue_test_case_hook'
+require_relative 'lib/redcase/engine'
 
 Redmine::Plugin.register :redcase do
 
@@ -130,12 +131,13 @@ Redmine::Plugin.register :redcase do
 			:after => :new_issue
 		}
 
-	Rails.configuration.to_prepare do
-		Issue.send :include, IssuePatch
-		Project.send :include, ProjectPatch
-		Version.send :include, VersionPatch
-		User.send :include, UserPatch
-	end
+end
 
+# Initialize the plugin
+Rails.application.config.to_prepare do
+  Issue.include(IssuePatch) unless Issue.included_modules.include?(IssuePatch)
+  Project.include(ProjectPatch) unless Project.included_modules.include?(ProjectPatch)
+  Version.include(VersionPatch) unless Version.included_modules.include?(VersionPatch)
+  User.include(UserPatch) unless User.included_modules.include?(UserPatch)
 end
 

@@ -1,7 +1,4 @@
-
-class Excel_Exporter
-
-	unloadable
+class ExcelExporter
 
 	def self.exportTestResults(project_id, suite_id, version_id, environment_id)
 		issues = Issue

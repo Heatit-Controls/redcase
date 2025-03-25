@@ -1,6 +1,5 @@
-
 <script>
-	jQuery2(function() {
+	jQuery2(function($) {
 		// Collecting information about other projects (to copy test cases)...
 <% Project.allowed_to(:add_issues).where('id <> ?', @project.id).each { |op| %>
 		Redcase.jsCopyToMenuItems.push({
@@ -8,7 +7,27 @@
 			text: '<%= op.name.gsub(/'/, "\\\\'") %>'
 		});
 <% } %>
+		// Initialize test suite tree first
 		Redcase.testSuiteTree.initialize();
+		
+		// Initialize execution suite tree after a small delay
+		setTimeout(function() {
+			// Initialize execution suite tree
+			if (Redcase.executionSuiteTree && typeof Redcase.executionSuiteTree.initialize === 'function') {
+				Redcase.executionSuiteTree.initialize();
+				
+				// Enable drag and drop between trees
+				$(document).on('dnd_start.vakata', function(e, data) {
+					console.log('Drag started', data);
+				});
+				
+				$(document).on('dnd_stop.vakata', function(e, data) {
+					console.log('Drag completed', data);
+				});
+			} else {
+				console.error('Execution suite tree not initialized properly');
+			}
+		}, 500);
 	});
 </script>
 

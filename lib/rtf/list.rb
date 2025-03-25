@@ -1,4 +1,34 @@
-module RTF
+module Rtf
+  # This class is a wrapper for creating a list in an RTF document
+  class List
+    # This is a wrapper that creates a ListNode and provides a simpler interface
+    def initialize(parent, kind=:bullets)
+      @parent = parent
+      @kind = kind
+    end
+    
+    # Yield to a block with a list level node, similar to how the list method works in node.rb
+    def items(&block)
+      node = ListNode.new(@parent)
+      yield node.list(@kind)
+    end
+    
+    # For compatibility with RTF exporter
+    def method_missing(method, *args, &block)
+      # If a block is given, create a list and pass the block to it
+      if block_given?
+        items(&block)
+      else
+        super
+      end
+    end
+    
+    def respond_to_missing?(method, include_private = false)
+      # We'll claim to respond to most methods when called with a block
+      block_given? || super
+    end
+  end
+
   class ListTable
     def initialize
       @templates = []
@@ -139,11 +169,11 @@ module RTF
 
     def initialize(template, marker, level)
       unless marker.kind_of? ListMarker
-        RTFError.fire("Invalid marker #{marker.inspect}")
+        RtfError.fire("Invalid marker #{marker.inspect}")
       end
 
       unless ValidLevels.include? level
-        RTFError.fire("Invalid list level: #{level}")
+        RtfError.fire("Invalid list level: #{level}")
       end
 
       @template = template 

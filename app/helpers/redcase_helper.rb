@@ -1,4 +1,3 @@
-
 require 'application_helper'
 
 module RedcaseHelper

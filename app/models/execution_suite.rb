@@ -1,21 +1,15 @@
-
 class ExecutionSuite < ActiveRecord::Base
-
-	unloadable
-	acts_as_tree :order => 'name'
-	has_and_belongs_to_many(
-		:test_cases,
-		:join_table => 'execution_suite_test_case'
-	)
+	acts_as_tree order: 'name'
+	has_and_belongs_to_many :test_cases,
+		join_table: 'execution_suite_test_case'
 	belongs_to :project
-	attr_protected :id
 
 	def self.get_root_for_project(project)
-		execution_suite = ExecutionSuite.find_by_project_id(project.id)
+		execution_suite = ExecutionSuite.find_by(project_id: project.id)
 		if execution_suite.nil?
 			execution_suite = ExecutionSuite.create(
-				:name => 'Root',
-				:project => project
+				name: 'Root',
+				project: project
 			)
 		end
 		execution_suite
@@ -24,9 +18,9 @@ class ExecutionSuite < ActiveRecord::Base
 	def self.get_results(environment, version, suite_id, project_id)
 	    if environment && version
 			issues = Issue
-				.where({ project_id: project_id })
+				.where(project_id: project_id)
 				.pluck(:id)
-			test_cases = TestCase.where({ issue_id: issues })
+			test_cases = TestCase.where(issue_id: issues)
 			unless suite_id < 0
 				test_cases = test_cases.select { |tc|
 					tc.in_suite?(suite_id, project_id)
@@ -35,11 +29,7 @@ class ExecutionSuite < ActiveRecord::Base
 			test_cases.inject([]) { |journals, tc|
 				journals << ExecutionJournal
 					.order('created_on desc')
-					.find_by_test_case_id_and_environment_id_and_version_id(
-						tc.id,
-						environment.id,
-						version.id
-					)
+					.find_by(test_case_id: tc.id, environment_id: environment.id, version_id: version.id)
 				journals
 			}.compact
 		else
@@ -68,7 +58,7 @@ class ExecutionSuite < ActiveRecord::Base
     # <% end %>
     #
 	def walk_tree(_options = {}, level = 0, node = nil, &block)
-		options = {:algorithm => :dfs, :where => {}}.update(_options)
+		options = { algorithm: :dfs, where: {} }.update(_options)
 		case options[:algorithm]
 			when :bfs
 				nodes = (node.children).where(options[:where])
@@ -89,7 +79,7 @@ class ExecutionSuite < ActiveRecord::Base
 	def is_test_case_id_unique?(id)
 		result = true
 		walk_tree({}, 0, root) do |suite, level|
-			if suite.test_cases.exists?(:id => id)
+			if suite.test_cases.exists?(id: id)
 				result = false
 				break
 			end

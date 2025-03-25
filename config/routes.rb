@@ -1,4 +1,4 @@
-
+# Ensure compatibility with Redmine 6.0
 resources :projects do
 	namespace :redcase do
 		resources :environments, only: [:index, :create, :update, :destroy]

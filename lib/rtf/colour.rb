@@ -2,7 +2,7 @@
 
 require 'stringio'
 
-module RTF
+ module Rtf
    # This class represents a colour within a RTF document.
    class Colour
       # Attribute accessor.
@@ -170,4 +170,4 @@ module RTF
 
       alias << add
    end # End of the ColourTable class.
-end # End of the RTF module.
+end # End of the Rtf module.

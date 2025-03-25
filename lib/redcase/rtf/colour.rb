@@ -1,0 +1,161 @@
+#!/usr/bin/env ruby
+
+require 'stringio'
+
+module Redcase
+   module Rtf
+      # This class represents a colour used within a RTF document. The class is 
+      # simply a type safe wrapper for the colour information required to define
+      # a colour within a RTF document.
+      class Colour
+         # Attributes
+         attr_reader :red, :green, :blue
+
+         # This is the constructor for the class.
+         #
+         # ==== Parameters
+         # red::    The red component for the colour. Must be in the range 0 - 255.
+         # green::  The green component for the colour. Must be in the range 0 - 255.
+         # blue::   The blue component for the colour. Must be in the range 0 - 255.
+         def initialize(red, green, blue)
+            @red   = red < 0 ? 0 : (red > 255 ? 255 : red)
+            @green = green < 0 ? 0 : (green > 255 ? 255 : green)
+            @blue  = blue < 0 ? 0 : (blue > 255 ? 255 : blue)
+         end
+
+         # This method compares a specified colour object with the colour that the
+         # method is called on. The two objects are only considered equivalent if
+         # they have the same red, green and blue values.
+         #
+         # ==== Parameters
+         # object::  A reference to the object to be tested for equivalence.
+         def ==(object)
+            object.instance_of?(Colour) and
+            object.red   == @red and
+            object.green == @green and
+            object.blue  == @blue
+         end
+
+         # This method returns a textual description for a Colour object.
+         #
+         # ==== Parameters
+         # indent::  The number of spaces to prefix to the lines created by the
+         #           method. Defaults to zero.
+         def to_s(indent=0)
+            prefix = indent > 0 ? ' ' * indent : ''
+            "#{prefix}Colour (#{@red}/#{@green}/#{@blue})"
+         end
+
+         # This method generates the RTF text for a Colour object.
+         #
+         # ==== Parameters
+         # indent::  The number of spaces to prefix to the lines created by the
+         #           method. Defaults to zero.
+         def to_rtf(indent=0)
+            prefix = indent > 0 ? ' ' * indent : ''
+            "#{prefix}\\red#{@red}\\green#{@green}\\blue#{@blue};"
+         end
+      end # End of the Colour class.
+
+
+      # This class represents a table of colours used within a RTF document. This
+      # class need not be directly instantiated as it will be used internally by,
+      # and can be obtained from a Document object.
+      class ColourTable
+         # This is the constructor for the ColourTable class. A default colour
+         # table always contains a single colour set to black (red=0, green=0,
+         # blue=0).
+         def initialize
+            @colours = []
+            add(Colour.new(0, 0, 0))
+         end
+
+         # This method overloads the standard array getter method to provide
+         # access to the colours defined within a ColourTable object.
+         #
+         # ==== Parameters
+         # index::  The index of the colour to be retrieved.
+         def [](index)
+            raise 'Invalid colour table index.' if index >= @colours.size
+            @colours[index]
+         end
+
+         # This method provides an indication of whether a specified colour
+         # exists within a ColourTable object.
+         #
+         # ==== Parameters
+         # colour::  A reference to the colour to be located within the table.
+         def include?(colour)
+            @colours.include?(colour)
+         end
+
+         # This method adds a new colour to a ColourTable object. If the colour
+         # is already present in the table then no action is taken. The method
+         # returns the index of the colour.
+         #
+         # ==== Parameters
+         # colour::  A reference to the colour to be added to the table.
+         def add(colour)
+            if colour.instance_of?(Colour) == false
+               raise 'Only colour objects may be added to a ColourTable.'
+            end
+
+            index = @colours.index(colour)
+            if index.nil?
+               @colours.push(colour)
+               index = @colours.size - 1
+            end
+            index + 1
+         end
+
+         # This method returns a count of the number of colours defined within a
+         # ColourTable object.
+         def size
+            @colours.size
+         end
+
+         # This method returns the index of a specified colour within a
+         # ColourTable object.
+         #
+         # ==== Parameters
+         # colour::  A reference to the colour to be located within the table.
+         def index(colour)
+            index = @colours.index(colour)
+            index.nil? ? index : index + 1
+         end
+
+         # This method generates a textual description for a ColourTable object.
+         #
+         # ==== Parameters
+         # indent::  The number of spaces to prefix to the lines generated by the
+         #           method. Defaults to zero.
+         def to_s(indent=0)
+            prefix = indent > 0 ? ' ' * indent : ''
+            text   = StringIO.new
+
+            text << "#{prefix}Colour Table (#{@colours.size} colours)"
+            @colours.each {|colour| text << "\n#{prefix}   #{colour}"}
+
+            text.string
+         end
+
+         # This method generates the RTF text for a ColourTable object.
+         #
+         # ==== Parameters
+         # indent::  The number of spaces to prefix to the lines generated by the
+         #           method. Defaults to zero.
+         def to_rtf(indent=0)
+            prefix = indent > 0 ? ' ' * indent : ''
+            text   = StringIO.new
+
+            text << "#{prefix}{\\colortbl\n#{prefix};"
+            @colours.each {|colour| text << "\n#{prefix}#{colour.to_rtf}"}
+            text << "\n#{prefix}}"
+
+            text.string
+         end
+
+         alias << add
+      end # End of the ColourTable class.
+   end # End of the Rtf module.
+end # End of the Redcase module.

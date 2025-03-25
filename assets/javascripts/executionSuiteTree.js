@@ -1,4 +1,3 @@
-
 var RedcaseExecutionSuiteTree = function($) {
 
 	var tree;
@@ -446,102 +445,125 @@ var RedcaseExecutionSuiteTree = function($) {
 		}
 	};
 
-	var onCopy = function(event, object) {
-		// Fields: is_foreign, is_multi, new_instance, node, old_instance,
-		//         old_parent (ID), old_position (index), original (node),
-		//         parent (id), position (index (altid 0?))
-		// Internal drag + drop
-		if (object.old_instance === object.new_instance) {
-			switch (object.original.type) {
-				case 'case':
-					moveTestCase(
-						object.node,
-						object.original,
-						object.new_instance,
-						object.old_instance
-					);
-					break;
-				case 'suite':
-					moveTestSuite(
-						object.node,
-						object.original,
-						object.new_instance,
-						object.old_instance
-					);
-					break;
+	var onCopy = function(event, params) {
+		if (params.original.node.original.type === 'case') {
+			// Bug: params.original.node.original does not have 'issue_id' property
+			// so we have to extract issue_id directly from node id:
+			// 'issue_1' => '1'
+			var issueId = params.node.id.split('_')[1];
+			
+			// Also handle case_id format
+			if (!issueId) {
+				issueId = params.node.original.issue_id;
 			}
-		} else {
-			if (object.original.type === 'case') {
-				copyTestCase(
-					object.node,
-					object.original,
-					object.new_instance,
-					object.old_instance
-				);
-			} else {
-				object.new_instance.delete_node(object.node);
+			
+			if (!issueId) {
+				console.error('Could not extract issue ID from', params.node);
+				return;
 			}
+			
+			var apiParms = $.extend({}, 
+				Redcase.api.testCase.update(issueId), {
+					params: {
+						add_to_exec_id: params.parent.split('_')[1]
+					},
+					success: function() {
+						// Set the node's original data to include the issue_id
+						params.node.original = params.original.node.original;
+						Redcase.full();
+					},
+					error: function() {
+						tree.delete_node(params.node);
+					},
+					errorMessage: "Test case can't be added to execution list"
+				}
+			);
+			Redcase.api.apiCall(apiParms);
 		}
 	};
 
-	var build = function(params) {
+	var build = function() {
+		prepareContextItems();
 		tree = $('#management_execution_suite_tree_id').jstree({
 			core: {
+				animation: 0,
 				check_callback: checkCallback,
+				force_text: true,
+				themes: {
+					icons: true
+				},
 				data: {
 					type: 'GET',
 					url: function() {
-						return (
-							Redcase.api.context
-							+ Redcase.api.executionSuite.show(
+						return Redcase.api.context
+							+ Redcase.api.executionSuite.index(
 								$('#list_id').val()
-							).method
-						);
+							).method;
 					}
 				}
 			},
-			// Bug workaround, should only be in "dnd" settings when
-			// JSTree is fixed.
-			drag_selection: true,
-			dnd: {
-				always_copy: true,
-				drag_selection: true,
-				is_draggable: isDraggable
-			},
+			plugins: ['dnd', 'types', 'contextmenu'],
 			types: {
 				'#': {
 					valid_children: ['root']
 				},
-				root: {
+				'root': {
 					valid_children: ['suite', 'case']
 				},
-				suite: {
+				'suite': {
 					valid_children: ['suite', 'case']
-				},
-				'default': {
-					valid_childrein: []
 				},
 				'case': {
+					valid_children: []
+				},
+				'default': {
 					valid_children: []
 				}
 			},
 			contextmenu: {
-				items: getItems
+				items: function(obj) {
+					var items = {};
+					if (obj.type === 'case') {
+						$.extend(items, caseItems);
+					} else if (obj.type === 'suite') {
+						$.extend(items, suiteItems);
+						if (obj.parents.length < 2) {
+							$.extend(items, specialSuiteItems);
+						}
+						$.extend(items, commonItems);
+					}
+					return items;
+				}
 			},
-			plugins: ['dnd', 'types', 'contextmenu']
+			dnd: {
+				always_copy: true,
+				inside_pos: 'last',
+				is_draggable: isDraggable,
+				check_while_dragging: true
+			}
 		});
 		tree.on('copy_node.jstree', onCopy);
+		tree.on('select_node.jstree', nodeSelected);
 		tree = $.jstree.reference(tree);
 	};
 
-	(function() {
+	this.initialize = function() {
 		prepareContextItems();
 		build();
-		$('#btn_save_exec_suite').on('click', saveExecSuiteClick);
-		$('#btn_create_exec_suite').on('click', createExecSuiteClick);
-		$('#btn_destroy_exec_suite').on('click', destroyExecSuiteClick);
-		$('#list_id').on('change', refresh);
-	})();
+		
+		// Setup event handlers for buttons
+		$('#btn_save_exec_suite').click(saveExecSuiteClick);
+		$('#btn_create_exec_suite').click(createExecSuiteClick);
+		$('#btn_destroy_exec_suite').click(destroyExecSuiteClick);
+		
+		// Handle list change
+		$('#list_id').change(function() {
+			$('#list_name').val($(this).children(':selected').text());
+			refresh();
+		});
+		
+		console.log('ExecutionSuiteTree initialized');
+	};
 
 };
 

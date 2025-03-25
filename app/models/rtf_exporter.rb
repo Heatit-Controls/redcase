@@ -1,9 +1,8 @@
+require_relative '../../lib/rtf'
 
-class Rtf_Exporter
+class RtfExporter
 
-	unloadable
-
-	include RTF
+	include Rtf
 
 	@@cStyles = {}
 	@@pStyles = {}

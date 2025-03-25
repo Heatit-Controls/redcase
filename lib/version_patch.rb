@@ -1,12 +1,10 @@
-
 # This patch adds ExecutionJournal linkage to Version
+# Ensure compatibility with Redmine 6.0
 module VersionPatch
+  extend ActiveSupport::Concern
 
-  def self.included(base)
-    base.class_eval do
-      # One-to-many relationship: (1)Version <=> (*)ExecutionJournal
-      has_many :execution_journals, :dependent => :destroy
-    end
+  included do
+    # One-to-many relationship: (1)Version <=> (*)ExecutionJournal
+    has_many :execution_journals, dependent: :destroy
   end
-
 end

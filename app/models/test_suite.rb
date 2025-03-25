@@ -1,22 +1,18 @@
-
 class TestSuite < ActiveRecord::Base
-
-	unloadable
-	acts_as_tree :order => "name"
-	has_many :test_cases, :dependent => :destroy
+	acts_as_tree order: "name"
+	has_many :test_cases, dependent: :destroy
 	belongs_to :project
-	attr_protected :id
 
 	# Returns root test suite linked to the project and creates one and nested
 	# 'system' test suites (for 'obsolete' and 'unsorted' test cases) if they
 	# don't exist yet.
 	def self.get_root_for_project(project)
-		test_suite = TestSuite.find_by_project_id(project.id)
+		test_suite = TestSuite.find_by(project_id: project.id)
 		if test_suite.nil?
-			test_suite = TestSuite.create(:name => 'Root')
+			test_suite = TestSuite.create(name: 'Root')
 			test_suite.project = project
-			test_suite.children << TestSuite.create(:name => '.Obsolete')
-			test_suite.children << TestSuite.create(:name => '.Unsorted')
+			test_suite.children << TestSuite.create(name: '.Obsolete')
+			test_suite.children << TestSuite.create(name: '.Unsorted')
 			test_suite.save
 		end
 		test_suite

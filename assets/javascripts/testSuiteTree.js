@@ -1,4 +1,3 @@
-
 var RedcaseTestSuiteTree = function($) {
 
 	self = this;
@@ -393,51 +392,67 @@ var RedcaseTestSuiteTree = function($) {
 		return items;
 	};
 
-	var build = function(params) {
-		var tree = $('#management_test_suite_tree_id')
-			.jstree({
-				core: {
-					check_callback: checkCallback,
-					data: {
-						type: 'GET',
-						url: (
-							Redcase.api.context
-							+ Redcase.api.testSuite.controller
-						)
-					}
+	var build = function() {
+		tree = $('#management_test_suite_tree_id').jstree({
+			core: {
+				check_callback: checkCallback,
+				data: {
+					type: 'GET',
+					url: Redcase.api.context + Redcase.api.testSuite.index().method
 				},
-				// Bug workaround, should only be in "dnd" settings when
-				// JSTree is fixed.
+				multiple: false
+			},
+			plugins: ['dnd', 'types', 'contextmenu'],
+			types: {
+				'#': {
+					valid_children: ['root']
+				},
+				root: {
+					valid_children: ['suite', 'case']
+				},
+				suite: {
+					valid_children: ['suite', 'case']
+				},
+				'default': {
+					valid_children: []
+				},
+				'case': {
+					valid_children: []
+				}
+			},
+			contextmenu: {
+				items: function(node) {
+					var items = {};
+					if (node.type === 'case') {
+						$.extend(items, caseItems);
+						if ((node.parents.length > 1)
+							&& (node.parents[1] !== 'Default')
+							&& (node.text !== '.Obsolete')
+						) {
+							$.extend(items, commonItems);
+						}
+					} else if (node.type === 'suite') {
+						if ((node.parents.length > 1)
+							&& (node.text !== '.Obsolete')
+							&& (node.text !== '.Unsorted')
+						) {
+							$.extend(items, suiteItems);
+							$.extend(items, commonItems);
+						}
+						$.extend(items, specialSuiteItems);
+					}
+					return items;
+				}
+			},
+			dnd: {
+				always_copy: true,
 				drag_selection: true,
-				dnd: {
-					always_copy: true,
-					drag_selection: true,
-					is_draggable: isDraggable
-				},
-				types: {
-					'#': {
-						valid_children: ['root']
-					},
-					root: {
-						valid_children: ['suite', 'case']
-					},
-					suite: {
-						valid_children: ['suite', 'case']
-					},
-					'default': {
-						valid_children: []
-					},
-					'case': {
-						valid_children: []
-					}
-				},
-				contextmenu: {
-					items: getItems
-				},
-				plugins: ['dnd', 'types', 'contextmenu']
-			});
+				is_draggable: isDraggable,
+				check_while_dragging: true
+			}
+		});
 		tree.on('copy_node.jstree', onCopy);
-		self.tree = $.jstree.reference(tree);
+		tree = $.jstree.reference(tree);
 	};
 
 };

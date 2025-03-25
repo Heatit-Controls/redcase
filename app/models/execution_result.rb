@@ -4,7 +4,7 @@
 
 class ExecutionResult < ActiveRecord::Base
 
-	unloadable
+	 
 	attr_protected :id
 
 end

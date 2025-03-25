@@ -2,7 +2,7 @@
 
 require 'stringio'
 
-module RTF
+ module Rtf
    # This is a parent class that all style classes will derive from.
    class Style
       # A definition for a character flow setting.

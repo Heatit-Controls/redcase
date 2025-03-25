@@ -1,13 +1,11 @@
-
 # TODO: "Combos" is not business case specific name, we need to come up with a
 #       better one. As this controller generates output for reports, it could be
 #       ReportController which would had two separate methods to generate two
 #       different kind of data (for the download button and the combo controls).
 class Redcase::CombosController < ApplicationController
 
-	unloadable
 	helper RedcaseHelper
-	before_filter :find_project, :authorize
+	before_action :find_project, :authorize
 
 	def index
 		@environment =

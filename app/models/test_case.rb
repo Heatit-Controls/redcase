@@ -1,19 +1,14 @@
-
 class TestCase < ActiveRecord::Base
 
-	unloadable
 	belongs_to :test_suite
-	belongs_to :issue
-	has_and_belongs_to_many(
-		:execution_suites,
-		:join_table => 'execution_suite_test_case'
-	)
-	has_many :execution_journals, :dependent => :destroy
-	attr_protected :id
+	belongs_to :issue, class_name: 'Issue', foreign_key: 'issue_id'
+	has_and_belongs_to_many :execution_suites,
+		join_table: 'execution_suite_test_case'
+	has_many :execution_journals, dependent: :destroy
 
 	def copy_to(project)
 		new_issue = Issue.new
-		new_issue.copy_from(issue, :subtasks => false)
+		new_issue.copy_from(issue, subtasks: false)
 		new_issue.project = project
 		# Changing project resets the custom field values.
 		new_issue.custom_field_values = issue.custom_field_values
@@ -39,7 +34,7 @@ class TestCase < ActiveRecord::Base
 	def self.maintenance(project)
 		all_issues = Issue
 			.includes(:tracker, :test_case, :status)
-			.where({ project_id: project.id })
+			.where(project_id: project.id)
 		cleanup_obsolete(all_issues, project)
 		move_unsorted(all_issues, project)
 		remove_orphaned(all_issues)
@@ -61,8 +56,8 @@ class TestCase < ActiveRecord::Base
 		}
 		unlinked_issues.each { |issue|
 			x = TestCase.create(
-				:issue => issue,
-				:test_suite => TestSuite
+				issue: issue,
+				test_suite: TestSuite
 					.get_root_for_project(project)
 					.children.detect { |o| o.name == '.Unsorted' }
 			)
@@ -139,10 +134,10 @@ class TestCase < ActiveRecord::Base
 			'icon'      => "testcase-result-icon-#{last_result}",
 			'draggable' => true,
 			'qtipCfg'   => {
-				:cls          => 'test',
-				:width        => '500',
-				:closable     => 'true',
-				:text         => (
+				cls:          'test',
+				width:        '500',
+				closable:     'true',
+				text:         (
 					"\"#{issue.subject}\"<br/>" + (
 						issue.description.nil? ? '' : (
 							"<br/><b>Description:</b><br/>#{textilized_description}"
@@ -152,8 +147,8 @@ class TestCase < ActiveRecord::Base
 					"<br/><b>Author:</b> #{issue.author.name}" +
 					"<br/><b>Created:</b> #{issue.created_on.strftime('%d.%m.%Y %H:%M')}"
 				),
-				:title        => "Issue ##{issue.id}",
-				:dismissDelay => 30000
+				title:        "Issue ##{issue.id}",
+				dismissDelay: 30000
 			},
 			'type'      => 'case',
 			'state'     => {
@@ -196,9 +191,9 @@ class TestCase < ActiveRecord::Base
 			if version.nil? || environment.nil?
 				execution_journals.last.result.name.gsub(' ', '')
 			else
-				last_result = execution_journals.where({
-						:version => version, :environment => environment
-					}).last
+				last_result = execution_journals.where(
+					version: version, environment: environment
+				).last
 				if last_result.nil?
 					'none'
 				else

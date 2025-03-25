@@ -1,4 +1,3 @@
-
 # Callback methods to subscribe on Redmine events
 
 require File.expand_path("../../app/helpers/redcase_helper", __FILE__)
