@@ -2,9 +2,9 @@ module Redcase
   class Engine < ::Rails::Engine
     initializer 'redcase.assets' do |app|
       app.config.assets.precompile += %w(
-        redcase/TestSuiteTree.js
-        redcase/ExecutionSuiteTree.js
-        redcase/ExecutionTree.js
+        redcase/testSuiteTree.js
+        redcase/executionSuiteTree.js
+        redcase/executionTree.js
         javascripts/jstree/themes/default/style.min.css
       )
       
